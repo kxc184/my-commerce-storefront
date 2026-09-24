@@ -107,6 +107,8 @@ export default async function decorate(block) {
       </div>
       <div class="product-details__right-column">
         <div class="product-details__header"></div>
+        <div class="product-details__tagline pdp-tagline" aria-label="Promotional offer"></div>
+        <div class="product-details__stock" role="status" aria-live="polite">test</div>
         <div class="product-details__price"></div>
         <div class="product-details__gallery"></div>
         <div class="product-details__short-description"></div>
@@ -122,6 +124,7 @@ export default async function decorate(block) {
         </div>
         <div class="product-details__description"></div>
         <div class="product-details__attributes"></div>
+        <div class="product-details__custom-attribute"></div>
       </div>
     </div>
   `);
@@ -143,8 +146,37 @@ export default async function decorate(block) {
   const $addToCartStatus = fragment.querySelector('.product-details__add-to-cart-status');
   const $description = fragment.querySelector('.product-details__description');
   const $attributes = fragment.querySelector('.product-details__attributes');
+  const $customAttribute = fragment.querySelector('.product-details__custom-attribute');
+  const $tagline = fragment.querySelector('.product-details__tagline');
+  const $stock = fragment.querySelector('.product-details__stock');
 
   block.replaceChildren(fragment);
+  if ($tagline) {
+    $tagline.textContent = 'Free shipping on orders over $50';
+  }
+  events.on(
+    'pdp/data',
+    (data) => {
+      if (!data) return;
+      if (data.inStock) {
+        $stock.textContent = 'In Stock';
+        $stock.className = 'product-details__stock stock-badge stock-badge--in-stock';
+      } else {
+        $stock.textContent = 'Out of Stock';
+        $stock.className = 'product-details__stock stock-badge stock-badge--out-of-stock';
+      }
+      const value = data.metaTitle;
+      if (value) {
+        $customAttribute.innerHTML = `
+          <div class="custom-attribute">
+            <dt>Custom Attribute</dt>
+            <dd>${value}</dd>
+          </div>
+        `;
+      }
+    },
+    { eager: true },
+  );
 
   const gallerySlots = {
     CarouselThumbnail: (ctx) => {
@@ -278,9 +310,7 @@ export default async function decorate(block) {
         if (valid) {
           if (isUpdateMode) {
             // --- Update existing item ---
-            const { updateProductsFromCart } = await import(
-              '@dropins/storefront-cart/api.js'
-            );
+            const { updateProductsFromCart } = await import('@dropins/storefront-cart/api.js');
 
             await updateProductsFromCart([{ ...values, uid: itemUidFromUrl }]);
 
@@ -303,9 +333,7 @@ export default async function decorate(block) {
             return;
           }
           // --- Add new item ---
-          const { addProductsToCart } = await import(
-            '@dropins/storefront-cart/api.js'
-          );
+          const { addProductsToCart } = await import('@dropins/storefront-cart/api.js');
           await addProductsToCart([{ ...values }]);
         }
 
@@ -343,36 +371,52 @@ export default async function decorate(block) {
   })($addToCart);
 
   // Lifecycle Events
-  events.on('pdp/data', (data) => {
-    isOutOfStock = data?.inStock === false;
-    addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
-  }, { eager: true });
+  events.on(
+    'pdp/data',
+    (data) => {
+      isOutOfStock = data?.inStock === false;
+      addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
+    },
+    { eager: true },
+  );
 
-  events.on('pdp/valid', (valid) => {
-    // update add to cart button disabled state based on product selection validity and stock status
-    addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock || !valid }));
-  }, { eager: true });
+  events.on(
+    'pdp/valid',
+    (valid) => {
+      // update add to cart button disabled state based on product
+      // selection validity and stock status
+      addToCart.setProps((prev) => ({
+        ...prev,
+        disabled: isOutOfStock || !valid,
+      }));
+    },
+    { eager: true },
+  );
 
   // Handle option changes
-  events.on('pdp/values', () => {
-    if (wishlistToggleBtn) {
-      const configValues = pdpApi.getProductConfigurationValues();
+  events.on(
+    'pdp/values',
+    () => {
+      if (wishlistToggleBtn) {
+        const configValues = pdpApi.getProductConfigurationValues();
 
-      // Check URL parameter for empty optionsUIDs
-      const urlOptionsUIDs = urlParams.get('optionsUIDs');
+        // Check URL parameter for empty optionsUIDs
+        const urlOptionsUIDs = urlParams.get('optionsUIDs');
 
-      // If URL has empty optionsUIDs parameter, treat as base product (no options)
-      const optionUIDs = urlOptionsUIDs === '' ? undefined : (configValues?.optionsUIDs || undefined);
+        // If URL has empty optionsUIDs parameter, treat as base product (no options)
+        const optionUIDs = urlOptionsUIDs === '' ? undefined : configValues?.optionsUIDs || undefined;
 
-      wishlistToggleBtn.setProps((prev) => ({
-        ...prev,
-        product: {
-          ...product,
-          optionUIDs,
-        },
-      }));
-    }
-  }, { eager: true });
+        wishlistToggleBtn.setProps((prev) => ({
+          ...prev,
+          product: {
+            ...product,
+            optionUIDs,
+          },
+        }));
+      }
+    },
+    { eager: true },
+  );
 
   events.on('wishlist/alert', ({ action, item }) => {
     wishlistRender.render(WishlistAlert, {
@@ -413,14 +457,18 @@ export default async function decorate(block) {
   );
 
   // Set JSON-LD and Meta Tags
-  events.on('aem/lcp', () => {
-    const isPrerendered = isProductPrerendered();
-    if (product && !isPrerendered) {
-      setJsonLdProduct(product);
-      setMetaTags(product);
-      document.title = product.name;
-    }
-  }, { eager: true });
+  events.on(
+    'aem/lcp',
+    () => {
+      const isPrerendered = isProductPrerendered();
+      if (product && !isPrerendered) {
+        setJsonLdProduct(product);
+        setMetaTags(product);
+        document.title = product.name;
+      }
+    },
+    { eager: true },
+  );
 
   return Promise.resolve();
 }
@@ -441,7 +489,8 @@ async function setJsonLdProduct(product) {
   const brand = attributes?.find((attr) => attr.name === 'brand');
 
   // get variants
-  const { data } = await pdpApi.fetchGraphQl(`
+  const { data } = await pdpApi.fetchGraphQl(
+    `
     query GET_PRODUCT_VARIANTS($sku: String!) {
       variants(sku: $sku) {
         variants {
@@ -461,10 +510,12 @@ async function setJsonLdProduct(product) {
         }
       }
     }
-  `, {
-    method: 'GET',
-    variables: { sku },
-  });
+  `,
+    {
+      method: 'GET',
+      variables: { sku },
+    },
+  );
 
   const variants = data?.variants?.variants || [];
 
@@ -486,20 +537,22 @@ async function setJsonLdProduct(product) {
   };
 
   if (variants.length > 1) {
-    ldJson.offers.push(...variants
-      // A variant can come back without a resolved product (e.g. an
-      // unavailable option combination); skip those so JSON-LD generation
-      // doesn't throw on null property access.
-      .filter((variant) => variant.product)
-      .map((variant) => ({
-        '@type': 'Offer',
-        name: variant.product.name,
-        image: variant.product.images?.[0]?.url,
-        price: variant.product.price?.final?.amount?.value,
-        priceCurrency: variant.product.price?.final?.amount?.currency,
-        availability: variant.product.inStock ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
-        sku: variant.product.sku,
-      })));
+    ldJson.offers.push(
+      ...variants
+        // A variant can come back without a resolved product (e.g. an
+        // unavailable option combination); skip those so JSON-LD generation
+        // doesn't throw on null property access.
+        .filter((variant) => variant.product)
+        .map((variant) => ({
+          '@type': 'Offer',
+          name: variant.product.name,
+          image: variant.product.images?.[0]?.url,
+          price: variant.product.price?.final?.amount?.value,
+          priceCurrency: variant.product.price?.final?.amount?.currency,
+          availability: variant.product.inStock ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
+          sku: variant.product.sku,
+        })),
+    );
   } else {
     ldJson.offers.push({
       '@type': 'Offer',
