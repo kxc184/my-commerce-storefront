@@ -37,7 +37,7 @@ async function fetchCategoryProducts(categoryId, maxProducts) {
 
 export default async function decorate(block) {
   const { 'category-id': categoryId = '', heading = 'Featured Products', 'max-products': maxProductsStr = '4' } = readBlockConfig(block);
-
+  console.log('Category ID:', categoryId);
   const maxProducts = parseInt(maxProductsStr, 10) || 4;
 
   block.innerHTML = `
