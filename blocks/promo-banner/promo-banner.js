@@ -18,9 +18,11 @@ async function fetchCategoryProducts(categoryId, maxProducts) {
               url
               label
             }
-            price {
-              final { amount { value currency } }
-              regular { amount { value currency } }
+            ... on SimpleProductView {
+              price {
+                final { amount { value currency } }
+                regular { amount { value currency } }
+              }
             }
           }
         }
@@ -37,7 +39,7 @@ async function fetchCategoryProducts(categoryId, maxProducts) {
 
 export default async function decorate(block) {
   const { 'category-id': categoryId = '', heading = 'Featured Products', 'max-products': maxProductsStr = '4' } = readBlockConfig(block);
-  console.log('Category ID:', categoryId);
+
   const maxProducts = parseInt(maxProductsStr, 10) || 4;
 
   block.innerHTML = `

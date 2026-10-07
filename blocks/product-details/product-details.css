@@ -139,6 +139,17 @@
     margin-left: 0;
     color: #444;
   }
+  .product-details__badge {
+  margin-top: var(--spacing-medium);
+  padding: .5rem 2rem;
+  display: inline-block;
+  background: green;
+  color: white;
+  font-weight: 600;
+  border-radius: 2rem;
+  text-align: center;
+}
+
 }
 
 .product-details__add-to-cart-status {

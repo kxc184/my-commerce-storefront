@@ -109,6 +109,7 @@ export default async function decorate(block) {
         <div class="product-details__header"></div>
         <div class="product-details__tagline pdp-tagline" aria-label="Promotional offer"></div>
         <div class="product-details__stock" role="status" aria-live="polite">test</div>
+        <div class="product-details__badge" ></div>
         <div class="product-details__price"></div>
         <div class="product-details__gallery"></div>
         <div class="product-details__short-description"></div>
@@ -148,11 +149,15 @@ export default async function decorate(block) {
   const $attributes = fragment.querySelector('.product-details__attributes');
   const $customAttribute = fragment.querySelector('.product-details__custom-attribute');
   const $tagline = fragment.querySelector('.product-details__tagline');
+  const $badge = fragment.querySelector('.product-details__badge');
   const $stock = fragment.querySelector('.product-details__stock');
 
   block.replaceChildren(fragment);
   if ($tagline) {
     $tagline.textContent = 'Free shipping on orders over $50';
+  }
+  if ($badge) {
+    $badge.textContent = 'Best Seller!';
   }
   events.on(
     'pdp/data',
